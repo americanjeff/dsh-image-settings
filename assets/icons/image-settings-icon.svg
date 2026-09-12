@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" color="#836042">
+  <title>image settings — photo frame with settings gear</title>
+  <!-- rounded photo frame: an open stroke whose bottom-right corner is left
+       un-drawn, opening the frame into the gear so both read in one color -->
+  <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M44 31.1 V14 A6 6 0 0 0 38 8 H10 A6 6 0 0 0 4 14 V42 A6 6 0 0 0 10 48 H31.1"/>
+  <!-- sun -->
+  <circle cx="15" cy="19" r="4" fill="currentColor"/>
+  <!-- mountains -->
+  <path fill="currentColor" d="M10 42 L19 30 L25 37 L30 31 L33 42 Z"/>
+  <!-- gear: donut body (evenodd) + eight teeth, straddling the frame corner -->
+  <g fill="currentColor">
+    <path fill-rule="evenodd" d="M37 46 A9 9 0 1 0 55 46 A9 9 0 1 0 37 46 Z M42.5 46 A3.5 3.5 0 1 1 49.5 46 A3.5 3.5 0 1 1 42.5 46 Z"/>
+    <g transform="translate(46 46)">
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1"/>
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1" transform="rotate(45)"/>
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1" transform="rotate(90)"/>
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1" transform="rotate(135)"/>
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1" transform="rotate(180)"/>
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1" transform="rotate(225)"/>
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1" transform="rotate(270)"/>
+      <rect x="-2" y="-12.5" width="4" height="5" rx="1" transform="rotate(315)"/>
+    </g>
+  </g>
+</svg>

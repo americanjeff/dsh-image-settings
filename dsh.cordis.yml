@@ -1,0 +1,18 @@
+# dsh-image-settings bundle patch layer: the single plugin row that mounts
+# the dsh-image-settings plugin.
+#
+# The row is the BARE package name: dsh resolves it to `main`
+# (dist/dsh/index.js — the dsh plugin entry, the thin host half: the
+# `image-settings:` settings section) as its node half, and the web app's
+# client scanner keys the same row's name to
+# `require.resolve('dsh-image-settings/package.json')` to pick up the
+# browser half (`dsh.client` + the `./client` export). Dual-face package,
+# one row.
+#
+# No config row: the bundle boots with the schema defaults (enabled on,
+# auto-unrolled, row-width images) — the user's `image-settings:` section
+# in settings.yaml (or an out-of-band edit of it) tunes it at boot or
+# hot-reload, no row change needed.
+- insert:
+    - id: dsh-image-settings
+      name: 'dsh-image-settings'

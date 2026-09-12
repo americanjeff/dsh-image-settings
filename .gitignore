@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.e2e/
+# e2e capture outputs: e2e-card-clean-dark.png stays tracked (README image);
+# the other states regenerate on each run.
+e2e-card-dirty-dark.png
+e2e-card-disabled-dark.png
+e2e-card-override-dark.png
+*.tsbuildinfo
+.vitest-cache/
+.pnpm-store/
+*.tgz
+BUGS.md

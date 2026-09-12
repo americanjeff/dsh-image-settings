@@ -1,0 +1,5 @@
+# (pnpm 10/11 workspace config. No allowBuilds needed yet: no dev-only
+# dependency in this project ships an install script that must be
+# approved. The dsh family devDeps float on the `next` dist-tag — the
+# 0.1.5-rc.2 set publishes self-consistent peer ranges, so no override
+# table is needed.)
