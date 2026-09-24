@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  imageAttachmentRefs,
-  imageCaption,
-  readImagePath,
-  sectionOf,
-  shouldRegisterReadImageView,
-  textBlocksOf,
-} from "../src/dsh/toolview.js";
+import { imageAttachmentRefs, imageCaption, readImagePath, sectionOf, textBlocksOf } from "../src/dsh/toolview.js";
 import { DEFAULT_IMAGE_SETTINGS } from "../src/types.js";
 
 describe("imageAttachmentRefs", () => {
@@ -99,21 +92,6 @@ describe("readImagePath", () => {
   });
 });
 
-describe("shouldRegisterReadImageView", () => {
-  it("defaults ON for an absent or malformed section", () => {
-    expect(shouldRegisterReadImageView(undefined)).toBe(true);
-    expect(shouldRegisterReadImageView(null)).toBe(true);
-    expect(shouldRegisterReadImageView({})).toBe(true);
-    expect(shouldRegisterReadImageView({ enabled: "yes" })).toBe(true);
-    expect(shouldRegisterReadImageView("image-settings")).toBe(true);
-  });
-
-  it("registers on explicit true and steps aside on explicit false only", () => {
-    expect(shouldRegisterReadImageView({ enabled: true })).toBe(true);
-    expect(shouldRegisterReadImageView({ enabled: false })).toBe(false);
-  });
-});
-
 describe("sectionOf", () => {
   it("fills every default for an absent section", () => {
     expect(sectionOf(undefined)).toEqual(DEFAULT_IMAGE_SETTINGS);
@@ -123,7 +101,6 @@ describe("sectionOf", () => {
   });
 
   it("keeps valid fields, one at a time", () => {
-    expect(sectionOf({ enabled: false })).toEqual({ ...DEFAULT_IMAGE_SETTINGS, enabled: false });
     expect(sectionOf({ autoOpen: false })).toEqual({ ...DEFAULT_IMAGE_SETTINGS, autoOpen: false });
     expect(sectionOf({ maxWidth: 800 })).toEqual({ ...DEFAULT_IMAGE_SETTINGS, maxWidth: 800 });
     expect(sectionOf({ maxHeight: 1200 })).toEqual({ ...DEFAULT_IMAGE_SETTINGS, maxHeight: 1200 });
@@ -147,9 +124,13 @@ describe("sectionOf", () => {
 
   it("falls back to the default per malformed boolean field", () => {
     for (const bad of ["true", 0, 1, null]) {
-      expect(sectionOf({ enabled: bad }).enabled).toBe(DEFAULT_IMAGE_SETTINGS.enabled);
       expect(sectionOf({ autoOpen: bad }).autoOpen).toBe(DEFAULT_IMAGE_SETTINGS.autoOpen);
       expect(sectionOf({ showEnvelope: bad }).showEnvelope).toBe(DEFAULT_IMAGE_SETTINGS.showEnvelope);
     }
+  });
+
+  it("ignores an `enabled` key left over from the pre-removal section shape", () => {
+    expect(sectionOf({ enabled: false })).toEqual(DEFAULT_IMAGE_SETTINGS);
+    expect(sectionOf({ enabled: "yes" })).toEqual(DEFAULT_IMAGE_SETTINGS);
   });
 });

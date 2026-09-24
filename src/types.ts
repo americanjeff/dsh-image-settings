@@ -12,6 +12,12 @@
  */
 
 /** The settings namespace this plugin owns (the section key in settings.yaml). */
+/**
+ * The plugin's locale namespace (the card dictionary registers under it and
+ * the card's slot entry carries it as `locale:`). The 0.1.7 settings keys
+ * (`configForms.get` / `whileServed`) are the profile ENTRY id — the
+ * plugin's package name here (`dsh-image-settings`), not this string.
+ */
 export const NAMESPACE = "image-settings";
 
 /**
@@ -19,13 +25,6 @@ export const NAMESPACE = "image-settings";
  * `sectionOf` (src/dsh/toolview.ts) fills defaults for an absent section.
  */
 export interface ImageSettingsSection {
-  /**
-   * Register the plugin's `read_image` tool view. Default ON — installing
-   * the plugin IS the opt-in. An explicit `false` steps aside and the
-   * host's own `read_image` row owns the call (no double render, no dead
-   * view shadowing an upstream host fix).
-   */
-  enabled: boolean;
   /**
    * Auto-unroll: when true the image and its envelope render with no expand
    * step; when false the row starts collapsed behind an expand control.
@@ -49,7 +48,6 @@ export interface ImageSettingsSection {
 
 /** The schema defaults — what a field reverts to once cleared. */
 export const DEFAULT_IMAGE_SETTINGS: ImageSettingsSection = {
-  enabled: true,
   autoOpen: true,
   maxWidth: null,
   maxHeight: 600,

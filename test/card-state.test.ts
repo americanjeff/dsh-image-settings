@@ -26,7 +26,6 @@ function section(overrides: Partial<ImageSettingsSection> = {}): ImageSettingsSe
 const px = pxSpec("maxWidth");
 const pxH = pxSpec("maxHeight");
 const boolA = boolSpec("autoOpen");
-const boolE = boolSpec("enabled");
 
 describe("px spec", () => {
   it("formats a stored px value; a no-cap value is the empty draft", () => {
@@ -65,7 +64,7 @@ describe("bool spec", () => {
 
 describe("FIELD_SPECS", () => {
   it("covers every field in the card's row order", () => {
-    expect(FIELD_SPECS.map((s) => s.field)).toEqual(["enabled", "autoOpen", "maxWidth", "maxHeight", "showEnvelope"]);
+    expect(FIELD_SPECS.map((s) => s.field)).toEqual(["autoOpen", "maxWidth", "maxHeight", "showEnvelope"]);
   });
 });
 
@@ -88,9 +87,9 @@ describe("draft staging", () => {
 
   it("drops one edit, keeps the rest", () => {
     let d: CardDraft = createDraft(1);
-    d = stageEdit(d, { field: "enabled", text: "false", clear: false });
+    d = stageEdit(d, { field: "autoOpen", text: "false", clear: false });
     d = stageEdit(d, { field: "maxHeight", text: "100", clear: false });
-    d = dropEdit(d, "enabled");
+    d = dropEdit(d, "autoOpen");
     expect(d.edits.map((e) => e.field)).toEqual(["maxHeight"]);
   });
 });
@@ -158,15 +157,15 @@ describe("control display values", () => {
 });
 
 describe("isNoOpEdit (the Undo gesture)", () => {
-  const live = section(); // the defaults: enabled/autoOpen on, maxWidth no-cap, maxHeight 600
+  const live = section(); // the defaults: autoOpen on, maxWidth no-cap, maxHeight 600
   const user = {};
 
   it("typing back to the displayed value of an inherited field is a no-op save", () => {
     expect(isNoOpEdit({ field: "maxHeight", text: "600", clear: false }, pxH, live, user)).toBe(true);
     expect(isNoOpEdit({ field: "maxHeight", text: "601", clear: false }, pxH, live, user)).toBe(false);
     expect(isNoOpEdit({ field: "maxWidth", text: "", clear: false }, px, live, user)).toBe(true); // no-cap = live
-    expect(isNoOpEdit({ field: "enabled", text: "true", clear: false }, boolE, live, user)).toBe(true);
-    expect(isNoOpEdit({ field: "enabled", text: "false", clear: false }, boolE, live, user)).toBe(false);
+    expect(isNoOpEdit({ field: "autoOpen", text: "true", clear: false }, boolA, live, user)).toBe(true);
+    expect(isNoOpEdit({ field: "autoOpen", text: "false", clear: false }, boolA, live, user)).toBe(false);
   });
 
   it("an override equal to the live value is NOT a no-op (the entry would stay)", () => {
@@ -190,13 +189,13 @@ describe("planOps", () => {
 
   it("maps edits to writes: text to set (empty = explicit no-cap), clear to unset", () => {
     let d: CardDraft = createDraft(7);
-    d = stageEdit(d, { field: "enabled", text: "false", clear: false });
+    d = stageEdit(d, { field: "showEnvelope", text: "false", clear: false });
     d = stageEdit(d, { field: "maxHeight", text: "", clear: false });
     d = stageEdit(d, { field: "maxWidth", text: "800", clear: false });
     d = stageEdit(d, { field: "autoOpen", text: "", clear: true });
     expect(planOps(d, FIELD_SPECS)).toEqual({
       ops: [
-        { op: "set", path: ["enabled"], value: false },
+        { op: "set", path: ["showEnvelope"], value: false },
         { op: "set", path: ["maxHeight"], value: null },
         { op: "set", path: ["maxWidth"], value: 800 },
         { op: "unset", path: ["autoOpen"] },

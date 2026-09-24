@@ -1,6 +1,6 @@
 {
   "name": "dsh-image-settings",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "User-tunable inline image display for dsh web sessions: a larger, auto-unrolling read_image tool view behind an image-settings section.",
   "author": "American Jeff <jeff@americanjeff.com>",
@@ -78,16 +78,16 @@
       "optional": true
     }
   },
-  "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-client-locale": "next",
-    "@deepseek-ai/dsh-client-store": "next",
-    "@deepseek-ai/dsh-client-ui-renderer": "next",
-    "@deepseek-ai/dsh-client-ui-settings": "next",
-    "@deepseek-ai/dsh-client-ui-settings-plugins": "next",
-    "@deepseek-ai/dsh-client-ui-slots": "next",
-    "@deepseek-ai/dsh-client-ui-tool": "next",
-    "@deepseek-ai/dsh-settings": "next",
+    "devDependencies": {
+      "@deepseek-ai/cordis": "^4.0.2",
+      "@deepseek-ai/dsh-client-locale": "alpha",
+      "@deepseek-ai/dsh-client-store": "alpha",
+      "@deepseek-ai/dsh-client-ui-plugin-manager": "alpha",
+      "@deepseek-ai/dsh-client-ui-renderer": "alpha",
+      "@deepseek-ai/dsh-client-ui-settings": "alpha",
+      "@deepseek-ai/dsh-client-ui-slots": "alpha",
+      "@deepseek-ai/dsh-client-ui-tool": "alpha",
+      "@deepseek-ai/dsh-settings": "alpha",
     "@deepseek-ai/schemastery": "^3.18.2",
     "@types/node": "^22.0.0",
     "@types/react": "~18.3.1",

@@ -39,7 +39,7 @@ export const PX_FIELDS = ["maxWidth", "maxHeight"] as const;
 export type PxField = (typeof PX_FIELDS)[number];
 
 /** The boolean fields the card edits. */
-export const BOOL_FIELDS = ["enabled", "autoOpen", "showEnvelope"] as const;
+export const BOOL_FIELDS = ["autoOpen", "showEnvelope"] as const;
 export type BoolField = (typeof BOOL_FIELDS)[number];
 
 /** Any field the card edits. */
@@ -89,7 +89,6 @@ export function boolSpec(field: BoolField): FieldSpec {
  * so the spec list doubles as the card's row order.
  */
 export const FIELD_SPECS: readonly FieldSpec[] = [
-  boolSpec("enabled"),
   boolSpec("autoOpen"),
   pxSpec("maxWidth"),
   pxSpec("maxHeight"),

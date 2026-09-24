@@ -1,13 +1,12 @@
 /**
  * dsh-image-settings — the plugin's settings card (browser bundle).
  *
- * One card registered into the host's `settings.plugin.item` slot under this
- * plugin's own namespace (`image-settings`). The Plugins settings section's
- * configurable tab dispatches the slot by the settings namespace a card
- * edits — pairing the namespaces a live Host plugin registers with the cards
- * registered under those keys — so the card renders where the section is
- * served and this deployment composes the plugin, and leaves no trace
- * elsewhere.
+ * One card registered into the host's `plugins.bundle.config` slot under
+ * this bundle's package name (the plugin-manager's bundle detail page
+ * renders it between the description and the rows; registration is gated
+ * through `configForms.whileServed` on this plugin's own namespace
+ * (`image-settings`), so the card shows wherever the section serves this
+ * deployment and leaves no trace elsewhere).
  *
  * The card is styled to be a stock plugin card: the host's own
  * `PluginCard`/`ValueField` markup (ui-settings-plugins 0.1.5-rc.2) with the
@@ -33,19 +32,20 @@
  * The card renders nothing while its namespace is not ready: `loading`
  * answers once the first accepted section lands, and a profile without the
  * settings service keeps the whole surface absent (no disabled card a user
- * cannot act on). The `enabled` value does NOT gate the card — the card is
- * the control for that setting, so an off view must still be reachable.
+ * cannot act on). The card itself has no enable switch — turning the plugin
+ * on or off is the host's built-in plugin management's job (disabling the
+ * plugin removes the section, so the card goes with it).
  */
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { createSnapshotStore, type SnapshotStore } from "@deepseek-ai/dsh-client-store";
 import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type { SettingsScope } from "@deepseek-ai/dsh-client-ui-settings/client";
-// The `settings.plugin.item` SlotMap declaration (keyed, scope root) + the
-// stock form types the card re-declares — type-only; the runtime slot is
-// declared by the host's configurable-plugins tab.
-import type { CardActions, CardFieldState, CardShell } from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
+import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
+// The `plugins.bundle.config` SlotMap declaration (keyed on the bundle's
+// package name) — type-only; the runtime slot is declared by the host's
+// plugin-manager page.
+import type {} from "@deepseek-ai/dsh-client-ui-plugin-manager/client";
 // The LocaleNamespaceMap merge that puts `image-settings` on the map (types
 // the `t` seat) — the module's augmentation applies as soon as it is in the
 // program, so the empty type import is deliberate.
@@ -68,11 +68,47 @@ import {
 import { DEFAULT_IMAGE_SETTINGS, type ImageSettingsSection } from "../types.js";
 import { sectionOf } from "./toolview.js";
 
+/** The stock card form state every plugin card shares (re-declared locally:
+ * the 0.1.7 settings domain dropped the shared card-form contract, and the
+ * bundle purity gate keeps this bundle's types self-contained). */
+interface CardShell {
+  /** False while the namespace is not served to this client; the card renders nothing. */
+  available: boolean;
+  /** Whether the Host document accepts writes. */
+  writable: boolean;
+  /** Whether the form holds edits that a save would write. */
+  dirty: boolean;
+  /** Whether any staged draft is invalid, which blocks the save. */
+  invalid: boolean;
+  /** Whether a save is crossing the wire. */
+  saving: boolean;
+  /** Whether the last save did not land as staged; cleared by the next edit or save. */
+  failed: boolean;
+}
+
+/** The write actions every plugin card's slot entry injects. */
+interface CardActions {
+  /** Stage draft text for one field. */
+  edit: (field: string, text: string) => void;
+  /** Stage a clear, so saving lets the field re-inherit the composition layer. */
+  resetField: (field: string) => void;
+  /** Write every staged edit, then re-seed from what the Host accepted. */
+  save: () => void;
+  /** Drop every staged edit. */
+  discard: () => void;
+}
+
+/** One field's staged control state. */
+interface CardFieldState {
+  text: string;
+  overridden: boolean;
+  invalid: boolean;
+}
+
 /** What the image-settings card renders: the stock card shell + one control state per field. */
 export interface ImageSettingsCardState extends CardShell {
   /** True while the document moved under the staged draft (the save will be refused). */
   drift: boolean;
-  enabled: CardFieldState;
   autoOpen: CardFieldState;
   maxWidth: CardFieldState;
   maxHeight: CardFieldState;
@@ -89,7 +125,7 @@ export interface ImageSettingsCardFace extends CardActions {
 
 /** Props the renderer binds for the image-settings card (the stock card props pattern). */
 export type ImageSettingsCardProps =
-  PropsRuntime<"settings.plugin.item"> &
+  PropsRuntime<"plugins.bundle.config"> &
   PropsLocale<"image-settings"> &
   InjectFace<ImageSettingsCardFace>;
 
@@ -103,7 +139,7 @@ export type ImageSettingsCardProps =
  * refused rather than overwritten.
  */
 export class CardController {
-  private readonly scope: SettingsScope<ImageSettingsSection>;
+  private readonly scope: ConfigForm<ImageSettingsSection>;
   private readonly specs: readonly FieldSpec[];
   private readonly store: SnapshotStore<ImageSettingsCardState>;
   private draft: CardDraft | null = null;
@@ -111,7 +147,7 @@ export class CardController {
   private failed = false;
   private readonly listeners = new Set<() => void>();
 
-  constructor(scope: SettingsScope<ImageSettingsSection>, specs: readonly FieldSpec[] = FIELD_SPECS) {
+  constructor(scope: ConfigForm<ImageSettingsSection>, specs: readonly FieldSpec[] = FIELD_SPECS) {
     this.scope = scope;
     this.specs = specs;
     this.store = this.bind(() => this.state());
@@ -151,7 +187,6 @@ export class CardController {
       saving: this.saving,
       failed: this.failed,
       drift: d !== null && d.fence !== undefined && snap.revision !== undefined && d.fence !== snap.revision,
-      enabled: field("enabled"),
       autoOpen: field("autoOpen"),
       maxWidth: field("maxWidth"),
       maxHeight: field("maxHeight"),
@@ -434,71 +469,52 @@ export function ImageSettingsCard(props: ImageSettingsCardProps): ReactElement |
             </p>
           ) : null}
           <ToggleField
-            id="image-settings-enabled"
-            label={t("enabled")}
-            checked={state.enabled.text === "true"}
-            overridden={state.enabled.overridden}
+            id="image-settings-autoOpen"
+            label={t("autoOpen")}
+            checked={state.autoOpen.text === "true"}
+            overridden={state.autoOpen.overridden}
             disabled={disabled}
             overriddenLabel={t("overridden")}
             resetLabel={t("reset")}
-            onToggle={(value) => props.edit("enabled", value ? "true" : "false")}
-            onReset={() => props.resetField("enabled")}
+            onToggle={(value) => props.edit("autoOpen", value ? "true" : "false")}
+            onReset={() => props.resetField("autoOpen")}
           />
-          {state.enabled.text === "true" ? (
-            <>
-              <ToggleField
-                id="image-settings-autoOpen"
-                label={t("autoOpen")}
-                checked={state.autoOpen.text === "true"}
-                overridden={state.autoOpen.overridden}
-                disabled={disabled}
-                overriddenLabel={t("overridden")}
-                resetLabel={t("reset")}
-                onToggle={(value) => props.edit("autoOpen", value ? "true" : "false")}
-                onReset={() => props.resetField("autoOpen")}
-              />
-              <ValueField
-                id="image-settings-maxWidth"
-                label={t("width")}
-                placeholder={t("noCap")}
-                overriddenLabel={t("overridden")}
-                resetLabel={t("reset")}
-                invalidLabel={t("invalidPx")}
-                disabled={disabled}
-                onEdit={(text) => props.edit("maxWidth", text)}
-                onReset={() => props.resetField("maxWidth")}
-                {...state.maxWidth}
-              />
-              <ValueField
-                id="image-settings-maxHeight"
-                label={t("height")}
-                placeholder={t("noCap")}
-                overriddenLabel={t("overridden")}
-                resetLabel={t("reset")}
-                invalidLabel={t("invalidPx")}
-                disabled={disabled}
-                onEdit={(text) => props.edit("maxHeight", text)}
-                onReset={() => props.resetField("maxHeight")}
-                {...state.maxHeight}
-              />
-              <ToggleField
-                id="image-settings-showEnvelope"
-                label={t("showEnvelope")}
-                hint={t("showEnvelopeHint")}
-                checked={state.showEnvelope.text === "true"}
-                overridden={state.showEnvelope.overridden}
-                disabled={disabled}
-                overriddenLabel={t("overridden")}
-                resetLabel={t("reset")}
-                onToggle={(value) => props.edit("showEnvelope", value ? "true" : "false")}
-                onReset={() => props.resetField("showEnvelope")}
-              />
-            </>
-          ) : (
-            <p className="dis_readOnly" role="status">
-              {t("disabled")}
-            </p>
-          )}
+          <ValueField
+            id="image-settings-maxWidth"
+            label={t("width")}
+            placeholder={t("noCap")}
+            overriddenLabel={t("overridden")}
+            resetLabel={t("reset")}
+            invalidLabel={t("invalidPx")}
+            disabled={disabled}
+            onEdit={(text) => props.edit("maxWidth", text)}
+            onReset={() => props.resetField("maxWidth")}
+            {...state.maxWidth}
+          />
+          <ValueField
+            id="image-settings-maxHeight"
+            label={t("height")}
+            placeholder={t("noCap")}
+            overriddenLabel={t("overridden")}
+            resetLabel={t("reset")}
+            invalidLabel={t("invalidPx")}
+            disabled={disabled}
+            onEdit={(text) => props.edit("maxHeight", text)}
+            onReset={() => props.resetField("maxHeight")}
+            {...state.maxHeight}
+          />
+          <ToggleField
+            id="image-settings-showEnvelope"
+            label={t("showEnvelope")}
+            hint={t("showEnvelopeHint")}
+            checked={state.showEnvelope.text === "true"}
+            overridden={state.showEnvelope.overridden}
+            disabled={disabled}
+            overriddenLabel={t("overridden")}
+            resetLabel={t("reset")}
+            onToggle={(value) => props.edit("showEnvelope", value ? "true" : "false")}
+            onReset={() => props.resetField("showEnvelope")}
+          />
           <div className="dis_footer">
             {state.failed ? (
               <p className="dis_failed" role="status">

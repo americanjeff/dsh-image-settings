@@ -144,22 +144,6 @@ export function readImagePath(argsRaw: unknown): string | undefined {
   }
 }
 
-/**
- * The registration gating decision (owner rule): `enabled` gates the
- * `read_image` keyed tool view's REGISTRATION, not just the image — an
- * explicit `false` deregisters the keyed view entirely so the host's own
- * row owns the call (no double render, no dead view shadowing an upstream
- * fix). The DEFAULT is ON: an absent or malformed section renders. Only an
- * explicit `false` steps aside.
- *
- * @param section - the current resolved `image-settings:` section (or
- *   `undefined` before the first acceptance — treated as the default,
- *   render on).
- */
-export function shouldRegisterReadImageView(section: unknown): boolean {
-  return isPlainObject(section) ? (section.enabled as unknown) !== false : true;
-}
-
 /** A positive integer px measure, or `null` (an explicit "no cap"), or
  *  `undefined` when the value is absent or malformed (caller falls back to
  *  the default). */
@@ -173,14 +157,14 @@ function positiveNullablePx(value: unknown): number | null | undefined {
  * Resolve a raw section (possibly `undefined` before first acceptance, or
  * hand-edited YAML) to a complete {@link ImageSettingsSection}. Lenient by
  * the reader contract (never throws): a malformed field falls back to the
- * {@link DEFAULT_IMAGE_SETTINGS} default, one field at a time.
+ * {@link DEFAULT_IMAGE_SETTINGS} default, one field at a time. An `enabled`
+ * key left over from the section's pre-removal shape is simply ignored.
  */
 export function sectionOf(raw: unknown): ImageSettingsSection {
   const section = isPlainObject(raw) ? raw : {};
   const maxWidth = positiveNullablePx(section.maxWidth);
   const maxHeight = positiveNullablePx(section.maxHeight);
   return {
-    enabled: typeof section.enabled === "boolean" ? section.enabled : DEFAULT_IMAGE_SETTINGS.enabled,
     autoOpen: typeof section.autoOpen === "boolean" ? section.autoOpen : DEFAULT_IMAGE_SETTINGS.autoOpen,
     maxWidth: maxWidth === undefined ? DEFAULT_IMAGE_SETTINGS.maxWidth : maxWidth,
     maxHeight: maxHeight === undefined ? DEFAULT_IMAGE_SETTINGS.maxHeight : maxHeight,

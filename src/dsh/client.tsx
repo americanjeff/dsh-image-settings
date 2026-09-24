@@ -10,26 +10,26 @@
  * describe mirror reloads on settings/document-updated and the bound
  * scope re-derives).
  *
- * The claim is a REGISTRATION gate (owner rule): the view registers while
- * the section has `enabled !== false` (default ON — installing the plugin
- * is the opt-in) and deregisters live on an out-of-band settings change,
- * handing the call back to the host's own `read_image` row — no double
- * render, no dead view shadowing an upstream host fix (the gate modelspoke's
- * retired read_image view used, e2e-verified on dsh 0.1.1/0.1.2). The slot
- * contract makes the claim a keyed replacement ("a key the shipped
+ * The slot contract makes the claim a keyed replacement ("a key the shipped
  * composition already covers is replaced, not shared"), so while this view
- * stands, the host row does not render.
+ * stands, the host row does not render. The view has no on/off switch of its
+ * own — turning it on or off is the host's built-in plugin management's job
+ * (disabling the plugin here deregisters the view and hands the call back to
+ * the host's own `read_image` row), which is why the `image-settings:`
+ * section carries no `enabled` field.
  *
  * Image bytes ride the 0.1.5 tool-view owner's session-authorized
  * `loadImage` loader (durable ref → browser URL, host-owned lifecycle) —
  * no sessions-service round trip, no object-URL bookkeeping.
  *
  * The plugin also owns its settings card: one entry in the host's
- * `settings.plugin.item` slot under this plugin's namespace, staged-edit
- * save over the same bound scope the view reads through (src/dsh/card.tsx).
- * The host's configurable-plugins tab dispatches it by served namespace, so
- * the card shows wherever the section serves this deployment and nowhere
- * the Host does not. The card is styled to be a stock plugin card — the
+ * `plugins.bundle.config` slot under this bundle's package name (the
+ * plugin-manager's bundle detail page renders it between description and
+ * rows), staged-edit save over the same config form the view reads through
+ * (src/dsh/card.tsx). Registration is gated through
+ * `configForms.whileServed` on this plugin's namespace, so the card shows
+ * wherever the section serves this deployment and nowhere the Host does
+ * not. The card is styled to be a stock plugin card — the
  * host's own PluginCard/ValueField markup + the stock modules' rules (as
  * `.dis_*` CSS, src/dsh/card-css.ts) — and its copy rides this plugin's own
  * locale namespace (src/dsh/card-locale.ts), registered with the
@@ -39,7 +39,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CSSProperties } from "react";
 import type { Context as ClientContext } from "@deepseek-ai/cordis";
-import type { SettingsScope } from "@deepseek-ai/dsh-client-ui-settings/client";
+import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
 // The module merge that puts `slots` on the cordis Context (the renderer
 // owns the SlotRegistry service).
 import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
@@ -49,10 +49,10 @@ import type {} from "@deepseek-ai/dsh-client-locale/client";
 // The SlotMap declaration of `tool.call.toolview` + its owner props —
 // type-only; the runtime identity comes from the shipped ui-tool row.
 import type { ToolCallOwnerProps } from "@deepseek-ai/dsh-client-ui-tool/client";
-// The SlotMap declaration of `settings.plugin.item` (keyed, on the settings
-// namespace a card edits) — type-only; the runtime slot is declared by the
-// host's configurable-plugins tab.
-import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
+// The SlotMap declaration of `plugins.bundle.config` (keyed on the bundle's
+// package name) + its owner props — type-only; the runtime slot is declared
+// by the host's plugin-manager page.
+import type {} from "@deepseek-ai/dsh-client-ui-plugin-manager/client";
 import { CardController, ImageSettingsCard } from "./card.js";
 import { injectCardStyles } from "./card-css.js";
 import { en, zh } from "./card-locale.js";
@@ -61,7 +61,6 @@ import {
   imageCaption,
   readImagePath,
   sectionOf,
-  shouldRegisterReadImageView,
   textBlocksOf,
   type ImageLoader,
   type ReadImageAttachmentRef,
@@ -69,10 +68,13 @@ import {
 import { NAMESPACE, type ImageSettingsSection } from "../types.js";
 
 export const name = "dsh-image-settings";
+// The profile entry id the 0.1.7 settings model keys by — this bundle's
+// entry `id:` in dsh.cordis.yml, which equals the package name here.
+const ENTRY_ID = name;
 // Required services (cordis fiber inject): the slot registry (the renderer),
 // the settings scope (the ui-settings base), and the locale runtime (the
 // card's dictionary registration + the framework-synthesized `t` seat).
-export const inject = ["slots", "settingsScope", "locale"];
+export const inject = ["slots", "configForms", "locale"];
 
 /**
  * Wrap the owner's session-authorized loader in the duck-typed
@@ -201,13 +203,11 @@ function ReadImageFigure({
 
 /** Register the read_image view once the shell declares the slot. */
 export function apply(ctx: ClientContext): void {
-  // One bound scope per plugin activation. The shared describe mirror (owned
+  // One config form per plugin activation. The shared describe mirror (owned
   // by the ui-settings base) reloads on the forwarded settings/document-updated
-  // event, so this scope re-derives for settings changes made anywhere — this
+  // event, so this form re-derives for settings changes made anywhere — this
   // page, another tab, or an out-of-band process writing settings.yaml.
-  const scope: SettingsScope<ImageSettingsSection> = ctx.settingsScope.bind<ImageSettingsSection>({
-    namespace: NAMESPACE,
-  });
+  const scope: ConfigForm<ImageSettingsSection> = ctx.configForms.get<ImageSettingsSection>(ENTRY_ID);
   // Capture stable callables once (useSyncExternalStore resubscribes when
   // the subscribe function identity changes).
   const subscribe = (listener: () => void) => scope.subscribe(listener);
@@ -276,12 +276,12 @@ export function apply(ctx: ClientContext): void {
     );
   };
 
-  // The plugin's settings card (src/dsh/card.tsx), bound to the same scope
-  // the view reads through. Registered unconditionally — the host's
-  // configurable-plugins tab dispatches this key only while the Host serves
-  // the `image-settings:` namespace, so a profile without the settings
-  // service never renders it; and the `enabled` value must not gate it, the
-  // card being the control that re-enables the view. The card's copy is
+  // The plugin's settings card (src/dsh/card.tsx), bound to the same form
+  // the view reads through. `configForms.whileServed` keeps the registration
+  // alive only while the Host serves the `image-settings` namespace (the
+  // 0.1.7 successor of the configurable-plugins tab's served-namespace
+  // dispatch), so a profile without the settings service never renders it
+  // or its configuration section. The card's copy is
   // registered in the plugin's own locale namespace; the entry's `locale:`
   // option puts the framework-synthesized `t` seat (typed to those keys) on
   // the card's props.
@@ -291,35 +291,33 @@ export function apply(ctx: ClientContext): void {
     "dsh-image-settings: settings card dictionary",
   );
   const cardController = new CardController(scope);
-  ctx.slots.inject("settings.plugin.item", () =>
-    ctx.slots.register(
-      { name: "settings.plugin.item", key: NAMESPACE, locale: NAMESPACE, registrant: name, inject: () => cardController.inject() },
-      ImageSettingsCard,
-    ),
+  ctx.effect(
+    () =>
+      ctx.configForms.whileServed([ENTRY_ID], () =>
+        ctx.slots.inject("plugins.bundle.config", () =>
+          ctx.slots.register(
+            {
+              name: "plugins.bundle.config",
+              key: name,
+              locale: NAMESPACE,
+              registrant: name,
+              inject: () => cardController.inject(),
+            },
+            ImageSettingsCard,
+          ),
+        ),
+      ),
+    "dsh-image-settings: settings card (while the Host serves the section)",
   );
 
-  ctx.slots.inject("tool.call.toolview", () => {
-    let disposeEntry: (() => void) | null = null;
-    const sync = (): void => {
-      const want = shouldRegisterReadImageView(scope.getSnapshot().value);
-      if (want && disposeEntry === null) {
-        disposeEntry = ctx.slots.register(
-          { name: "tool.call.toolview", key: "read_image", registrant: "dsh-image-settings" },
-          ReadImageView,
-        );
-      } else if (!want && disposeEntry !== null) {
-        disposeEntry();
-        disposeEntry = null;
-      }
-    };
-    const unsubscribe = scope.subscribe(sync);
-    sync();
-    return () => {
-      unsubscribe();
-      if (disposeEntry !== null) {
-        disposeEntry();
-        disposeEntry = null;
-      }
-    };
-  });
+  // The view registers unconditionally — on/off is the host's built-in
+  // plugin management (disabling the plugin unmounts this client half, which
+  // is how the view steps aside and the host's own `read_image` row takes
+  // the call back).
+  ctx.slots.inject("tool.call.toolview", () =>
+    ctx.slots.register(
+      { name: "tool.call.toolview", key: "read_image", registrant: "dsh-image-settings" },
+      ReadImageView,
+    ),
+  );
 }
